@@ -1,8 +1,10 @@
 library expandable_page_view;
+
+import 'dart:math';
+
 import 'package:expandable_page_view/src/size_reporting_widget.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'dart:math';
 
 typedef WidgetBuilder = Widget Function(BuildContext context, int index);
 
@@ -210,7 +212,7 @@ class _ExpandablePageViewState extends State<ExpandablePageView> {
   void initState() {
     super.initState();
     _sizes = _prepareSizes();
-    _maxChildSize = _sizes.reduce(max) ?? 1;
+    _maxChildSize = _sizes.reduce(max);
     _pageController = widget.controller ?? PageController();
     _pageController.addListener(_updatePage);
 
@@ -274,7 +276,12 @@ class _ExpandablePageViewState extends State<ExpandablePageView> {
 
   void _reinitializeSizes() {
     final currentPageSize = _sizes[_currentPage];
-    _sizes = _prepareSizes();
+
+    final estimatedSizes = _prepareSizes();
+    for (int i = 0; i < estimatedSizes.length; i++) {
+      estimatedSizes[i] = _sizes.elementAtOrNull(i) ?? estimatedSizes[i];
+    }
+    _sizes = estimatedSizes;
 
     if (_currentPage >= _sizes.length) {
       final differenceFromPreviousToCurrent = _previousPage - _currentPage;
@@ -287,8 +294,7 @@ class _ExpandablePageViewState extends State<ExpandablePageView> {
 
     _previousPage = _previousPage.clamp(0, _sizes.length - 1);
     _sizes[_currentPage] = currentPageSize;
-    _maxChildSize = _sizes.reduce(max) ?? 1;
-
+    _maxChildSize = _sizes.reduce(max);
   }
 
   Duration _getDuration() {
@@ -358,7 +364,7 @@ class _ExpandablePageViewState extends State<ExpandablePageView> {
     return OverflowPage(
       minSize: widget.expandToMaxSize ? _maxChildSize : 0,
       onSizeChange: (size) => setState(
-            () => _sizes[index] = _isHorizontalScroll ? size.height : size.width,
+        () => _sizes[index] = _isHorizontalScroll ? size.height : size.width,
       ),
       child: item,
       alignment: widget.alignment,
@@ -370,22 +376,19 @@ class _ExpandablePageViewState extends State<ExpandablePageView> {
       .asMap()
       .map(
         (index, child) => MapEntry(
-      index,
-
-      OverflowPage(
-        minSize: widget.expandToMaxSize ? _maxChildSize : 0,
-        onSizeChange: (size) => setState(
-                () {
+          index,
+          OverflowPage(
+            minSize: widget.expandToMaxSize ? _maxChildSize : 0,
+            onSizeChange: (size) => setState(() {
               _sizes[index] = _isHorizontalScroll ? size.height : size.width;
-              _maxChildSize = _sizes.reduce(max) ?? 1;
-            }
+              _maxChildSize = _sizes.reduce(max);
+            }),
+            child: child,
+            alignment: widget.alignment,
+            scrollDirection: widget.scrollDirection,
+          ),
         ),
-        child: child,
-        alignment: widget.alignment,
-        scrollDirection: widget.scrollDirection,
-      ),
-    ),
-  )
+      )
       .values
       .toList();
 }
